@@ -1,7 +1,7 @@
-String lines[DISPLAY_LINES] = { "task1", "task2", "task3", "task4", "task5", "task6", "task7", "task8", "task9", "task10", "data", "calibr", "home" };
+String lines[DISPLAY_LINES] = { "task1", "task2", "task3", "task4", "task5", "task6", "task7", "task8", "task9", "task10", "data", "calibr", "home", "test" };
 extern void (*task_array[])();
 
-int parameters_amount = 0;
+int parameters_amount = 0, d_value = -1, a_value = -1, uart_value = -1;
 String parameters_name[5];
 int* parameters_value[5];
 bool completed_tasks[DISPLAY_LINES];
@@ -38,8 +38,7 @@ void drawImage() {
   display.display();
 }
 
-void init_interface(){
-  Serial.begin(9600);
+void init_interface() {
   //энкодер
   attachInterrupt(digitalPinToInterrupt(ENCODER_PIN1), check_encoder, RISING);
   attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), check_button, FALLING);
@@ -49,7 +48,7 @@ void init_interface(){
   display.clearDisplay();
   display.setTextSize(2);
   display.setTextColor(SSD1306_WHITE);
-  
+
   create_parameter("curr_state", current_state);
   create_parameter("arrow_pos", arrow_pos);
 }
@@ -81,7 +80,22 @@ void set_task() {
     task_completed = false;
 
     if (current_state != 10) drawImage();
+    delay(500);
+    for (int i = 0; i < 3; i++) {
+      light(0);
+      delay(333 / 2);
+      light(1);
+      delay(333 / 2);
+    }
     task_array[current_state]();
+
+    up_handle();
+    for (int i = 0; i < 3; i++) {
+      light(1);
+      delay(333 / 2);
+      light(0);
+      delay(333 / 2);
+    }
 
     button_pressed = false;
     task_completed = true;
@@ -89,9 +103,17 @@ void set_task() {
 }
 
 void check_encoder() {
+  static uint32_t timer = millis();
+  static int goida = 0;
   if (!task_completed) return;
-
-  if (!digitalRead(ENCODER_PIN2)) {
+  //if (millis() - timer < 75) return;
+  /*goida = 0;
+  for (int i = 0; i < 20; i++) {
+    goida += digitalRead(ENCODER_PIN2);
+    delayMicroseconds(200);
+  }*/
+  delay(1);
+  if (digitalRead(ENCODER_PIN2) /*goida > 10*/) {
     current_state++;
     arrow_pos++;
   } else {
@@ -100,11 +122,13 @@ void check_encoder() {
   }
   current_state = constrain(current_state, 0, DISPLAY_LINES - 1);
   arrow_pos = constrain(arrow_pos, 0, 2);
+  timer = millis();
+  Serial.println(current_state);
   //current_state = (current_state + 12) % 12;
 }
 void check_button() {
   button_pressed = true;
-  completed_tasks[current_state] = true;
+  if (hanlde_calibrated) completed_tasks[current_state] = true;
 }
 void show_interface() {
   display.clearDisplay();  // очищаем экран
